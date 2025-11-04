@@ -234,113 +234,95 @@ The project includes comprehensive test coverage:
    - Random time travel
    - Edge case discovery
 
-### Running Tests
+### Quick Start
 
-**Prerequisites:**
+### Prerequisites
 ```bash
 # Install Foundry
 curl -L https://foundry.paradigm.xyz | bash
 foundryup
-```
 
-**Run all tests:**
+# Install Node.js 18+ for frontend
+npm install -g n
+n install 18
+```
+### Installation
 ```bash
+# Clone repository
+git clone <repository-url>
+cd de-sub
+
+# Install contract dependencies
+forge install
+
+# Install frontend dependencies
+cd frontend
+npm install
+cd ..
+```
+### Build & Test
+```bash
+# Build contract
+forge build
+
+# Run all tests
 forge test
-```
 
-**Run with verbosity:**
-```bash
-forge test -vvv
-```
-
-**Run specific test:**
-```bash
-forge test --match-test testSubscribe -vvv
-```
-
-**Generate gas report:**
-```bash
+# Run with gas reporting
 forge test --gas-report
 ```
+### Deploy to Sepolia Testnet
 
-**Coverage report:**
+**See [DEPLOY_TESTNET.md](DEPLOY_TESTNET.md) for complete guide**
+
 ```bash
-forge coverage
-```
+# 1. Setup environment
+cp .env.example .env
+# Edit .env with your keys
 
-## 🚀 Deployment
-
-### Local Deployment (Anvil)
-
-1. **Start local node:**
-```bash
-anvil
-```
-
-2. **Deploy contract:**
-```bash
-forge create src/MicroSubs.sol:MicroSubs \
-  --rpc-url http://localhost:8545 \
-  --private-key <PRIVATE_KEY>
-```
-
-### Testnet Deployment (Sepolia)
-
-1. **Set environment variables:**
-```bash
-export SEPOLIA_RPC_URL="https://sepolia.infura.io/v3/YOUR_INFURA_KEY"
-export PRIVATE_KEY="your_private_key"
-export ETHERSCAN_API_KEY="your_etherscan_key"
-```
-
-2. **Deploy:**
-```bash
-forge create src/MicroSubs.sol:MicroSubs \
-  --rpc-url $SEPOLIA_RPC_URL \
-  --private-key $PRIVATE_KEY \
-  --verify \
-  --etherscan-api-key $ETHERSCAN_API_KEY
-```
-
-3. **Verify contract (if not done during deployment):**
-```bash
-forge verify-contract <CONTRACT_ADDRESS> \
-  src/MicroSubs.sol:MicroSubs \
-  --chain-id 11155111 \
-  --etherscan-api-key $ETHERSCAN_API_KEY
-```
-
-### Deployment Script
-
-Create `script/Deploy.s.sol`:
-```solidity
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
-
-import "forge-std/Script.sol";
-import "../src/MicroSubs.sol";
-
-contract DeployScript is Script {
-    function run() external {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        
-        vm.startBroadcast(deployerPrivateKey);
-        
-        MicroSubs microSubs = new MicroSubs();
-        console.log("MicroSubs deployed at:", address(microSubs));
-        
-        vm.stopBroadcast();
-    }
-}
-```
-
-Run deployment script:
-```bash
-forge script script/Deploy.s.sol:DeployScript \
+# 2. Deploy contract
+forge script script/Deploy.s.sol \
   --rpc-url $SEPOLIA_RPC_URL \
   --broadcast \
   --verify
+
+# 3. Update frontend config
+# Edit frontend/src/config.js with contract address
+
+# 4. Run frontend
+cd frontend
+npm run dev
 ```
+
+### Local Development
+```bash
+# Start local node
+anvil
+
+# Deploy (in another terminal)
+forge script script/Deploy.s.sol --rpc-url http://localhost:8545 --broadcast
+```
+
+## 🎨 Frontend
+
+A minimal React frontend is included for interacting with the contract on Sepolia testnet.
+
+### Features
+- Connect MetaMask wallet
+- Browse available services
+- Subscribe to services
+- Create new services
+- Manage your services (withdraw, pause/unpause, update price)
+- Real-time subscription status
+
+### Setup
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+See [frontend/README.md](frontend/README.md) for detailed instructions.
 
 ## 💡 Usage Examples
 
@@ -412,14 +394,29 @@ de-sub/
 ├── test/
 │   └── MicroSubs.t.sol        # Test suite
 ├── script/
-│   └── Deploy.s.sol           # Deployment script
+│   ├── Deploy.s.sol           # Deployment script
+│   └── Interact.s.sol         # Interaction examples
+├── frontend/                  # React frontend (NEW!)
+│   ├── src/
+│   │   ├── App.jsx           # Main app component
+│   │   ├── config.js         # Contract configuration
+│   │   └── index.css         # Styles
+│   └── package.json          # Frontend dependencies
 ├── foundry.toml               # Foundry configuration
 └── README.md                  # This file
 ```
 
 ### Dependencies
+
+**Smart Contract:**
 - Solidity ^0.8.20
 - Foundry (forge, anvil, cast)
+
+**Frontend:**
+- Node.js 18+
+- React 18
+- ethers.js v6
+- Vite
 
 ### Code Style
 - NatSpec documentation for all public functions
