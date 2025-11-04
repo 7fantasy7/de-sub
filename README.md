@@ -10,6 +10,9 @@ MicroSubs is a smart contract that allows:
 - **Automatic expiration** based on blockchain timestamps
 - **On-chain verification** of subscription status
 - **Direct payments** to creator wallets
+- **Dynamic pricing** - creators can update service prices
+- **Service management** - pause/unpause subscriptions
+- **Subscriber tracking** - monitor active subscriber counts
 
 ## 🏗️ Architecture & Design Choices
 
@@ -18,9 +21,11 @@ MicroSubs is a smart contract that allows:
 #### 1. **Service Structure**
 ```solidity
 struct Service {
-    address creator;      // Service owner
-    uint256 pricePerMonth; // Subscription price in wei
-    bool exists;          // Existence flag for validation
+    address creator;         // Service owner
+    uint256 pricePerMonth;   // Subscription price in wei
+    bool exists;             // Existence flag for validation
+    bool paused;             // Service pause status
+    uint256 subscriberCount; // Number of active subscribers
 }
 ```
 
@@ -28,6 +33,8 @@ struct Service {
 - `exists` flag prevents operations on non-existent services without reverting on default values
 - Price stored in wei for maximum flexibility (creators can set any amount)
 - Creator address stored for earnings withdrawal authorization
+- `paused` allows creators to temporarily stop new subscriptions
+- `subscriberCount` tracks total subscribers for analytics
 
 #### 2. **Subscription Structure**
 ```solidity
@@ -141,12 +148,37 @@ Withdraw accumulated earnings (creator only).
 - **Requires:** Caller must be service creator
 - **Emits:** `EarningsWithdrawn`
 
+### Creator Management Functions
+
+#### `updateServicePrice(uint256 serviceId, uint256 newPrice)`
+Update the price of a service (creator only).
+- **Parameters:** 
+  - `serviceId` - Service to update
+  - `newPrice` - New price in wei (must be > 0)
+- **Requires:** Caller must be service creator
+- **Emits:** `ServicePriceUpdated`
+- **Note:** Price changes don't affect existing subscriptions
+
+#### `pauseService(uint256 serviceId)`
+Pause a service to prevent new subscriptions (creator only).
+- **Parameters:** `serviceId` - Service to pause
+- **Requires:** Caller must be service creator
+- **Emits:** `ServicePaused`
+- **Note:** Existing subscriptions remain valid
+
+#### `unpauseService(uint256 serviceId)`
+Unpause a service to allow new subscriptions (creator only).
+- **Parameters:** `serviceId` - Service to unpause
+- **Requires:** Caller must be service creator
+- **Emits:** `ServiceUnpaused`
+
 ### View Functions
 
 - `getSubscriptionExpiry(address user, uint256 serviceId) → uint256`
 - `getEarnings(uint256 serviceId) → uint256`
 - `getNextServiceId() → uint256`
 - `getServiceDetails(uint256 serviceId) → (address, uint256, bool)`
+- `getServiceInfo(uint256 serviceId) → (address, uint256, bool, bool, uint256)` - Returns creator, price, exists, paused, subscriberCount
 
 ## 🧪 Testing
 
@@ -182,7 +214,22 @@ The project includes comprehensive test coverage:
    - Multiple services and users
    - Cross-service subscriptions
 
-6. **Fuzz Tests**
+6. **Price Update Tests**
+   - Price modification by creator
+   - Access control validation
+   - Existing subscription protection
+
+7. **Pause/Unpause Tests**
+   - Service pause functionality
+   - Subscription blocking when paused
+   - Existing subscription validity
+
+8. **Subscriber Count Tests**
+   - Count tracking on new subscriptions
+   - Renewal behavior
+   - Post-expiry re-subscription
+
+9. **Fuzz Tests**
    - Random price values
    - Random time travel
    - Edge case discovery
@@ -390,6 +437,27 @@ This project demonstrates:
 - ✅ Event emission for off-chain indexing
 - ✅ Gas optimization techniques
 - ✅ Comprehensive testing with Foundry
+
+## 📜 Version History
+
+### v1.1.0 (Current) - November 2025
+**New Features:**
+- ✅ Dynamic pricing - `updateServicePrice()` function
+- ✅ Service pause/unpause - `pauseService()` and `unpauseService()`
+- ✅ Subscriber tracking - `subscriberCount` field
+- ✅ Enhanced service info - `getServiceInfo()` function
+
+**Improvements:**
+- Added 3 new events: `ServicePriceUpdated`, `ServicePaused`, `ServiceUnpaused`
+- Expanded Service struct with `paused` and `subscriberCount` fields
+- 20+ new test cases (total 60+)
+- 100% backward compatible with v1.0.0
+
+### v1.0.0 - November 2025
+- Initial release with core subscription functionality
+- Service creation, subscription, expiration, and withdrawal
+- 40+ comprehensive test cases
+- Complete documentation
 
 ## 📝 License
 

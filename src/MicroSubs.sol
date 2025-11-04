@@ -19,6 +19,8 @@ contract MicroSubs {
     error NoEarningsToWithdraw();
     error TransferFailed();
     error SubscriptionExpired();
+    error ServicePaused();
+    error CannotChangePriceWithActiveSubscribers();
     
     /*//////////////////////////////////////////////////////////////
                                 EVENTS
@@ -27,6 +29,9 @@ contract MicroSubs {
     event ServiceCreated(uint256 indexed serviceId, address indexed creator, uint256 pricePerMonth);
     event UserSubscribed(uint256 indexed serviceId, address indexed user, uint256 expiry);
     event EarningsWithdrawn(uint256 indexed serviceId, address indexed creator, uint256 amount);
+    event ServicePriceUpdated(uint256 indexed serviceId, uint256 oldPrice, uint256 newPrice);
+    event ServicePaused(uint256 indexed serviceId);
+    event ServiceUnpaused(uint256 indexed serviceId);
     
     /*//////////////////////////////////////////////////////////////
                             STATE VARIABLES
@@ -47,6 +52,8 @@ contract MicroSubs {
         address creator;
         uint256 pricePerMonth;
         bool exists;
+        bool paused;
+        uint256 subscriberCount;
     }
     
     /// @notice Represents a user's subscription to a service
@@ -85,7 +92,9 @@ contract MicroSubs {
         services[serviceId] = Service({
             creator: msg.sender,
             pricePerMonth: price,
-            exists: true
+            exists: true,
+            paused: false,
+            subscriberCount: 0
         });
         
         emit ServiceCreated(serviceId, msg.sender, price);
@@ -100,9 +109,13 @@ contract MicroSubs {
         Service storage service = services[serviceId];
         
         if (!service.exists) revert ServiceDoesNotExist();
+        if (service.paused) revert ServicePaused();
         if (msg.value != service.pricePerMonth) revert IncorrectPaymentAmount();
         
         Subscription storage subscription = subscriptions[serviceId][msg.sender];
+        
+        // Track new subscribers
+        bool isNewSubscriber = subscription.expiry <= block.timestamp;
         
         // If subscription is still active, extend from current expiry
         // Otherwise, start from current timestamp
@@ -111,6 +124,11 @@ contract MicroSubs {
             : block.timestamp;
         
         subscription.expiry = startTime + SUBSCRIPTION_DURATION;
+        
+        // Increment subscriber count for new subscribers
+        if (isNewSubscriber) {
+            service.subscriberCount++;
+        }
         
         // Add payment to creator's earnings
         earnings[serviceId] += msg.value;
@@ -196,5 +214,90 @@ contract MicroSubs {
     {
         Service storage service = services[serviceId];
         return (service.creator, service.pricePerMonth, service.exists);
+    }
+    
+    /**
+     * @notice Get complete service information including pause status and subscriber count
+     * @param serviceId The ID of the service
+     * @return creator The address of the service creator
+     * @return pricePerMonth The monthly subscription price in wei
+     * @return exists Whether the service exists
+     * @return paused Whether the service is paused
+     * @return subscriberCount The number of active subscribers
+     */
+    function getServiceInfo(uint256 serviceId)
+        external
+        view
+        returns (
+            address creator,
+            uint256 pricePerMonth,
+            bool exists,
+            bool paused,
+            uint256 subscriberCount
+        )
+    {
+        Service storage service = services[serviceId];
+        return (
+            service.creator,
+            service.pricePerMonth,
+            service.exists,
+            service.paused,
+            service.subscriberCount
+        );
+    }
+    
+    /*//////////////////////////////////////////////////////////////
+                        CREATOR MANAGEMENT FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
+    
+    /**
+     * @notice Update the price of a service
+     * @param serviceId The ID of the service
+     * @param newPrice The new price in wei
+     * @dev Only creator can update. Price changes don't affect existing subscriptions.
+     */
+    function updateServicePrice(uint256 serviceId, uint256 newPrice) external {
+        Service storage service = services[serviceId];
+        
+        if (!service.exists) revert ServiceDoesNotExist();
+        if (service.creator != msg.sender) revert NotServiceCreator();
+        if (newPrice == 0) revert InvalidPrice();
+        
+        uint256 oldPrice = service.pricePerMonth;
+        service.pricePerMonth = newPrice;
+        
+        emit ServicePriceUpdated(serviceId, oldPrice, newPrice);
+    }
+    
+    /**
+     * @notice Pause a service to prevent new subscriptions
+     * @param serviceId The ID of the service to pause
+     * @dev Only creator can pause. Existing subscriptions remain valid.
+     */
+    function pauseService(uint256 serviceId) external {
+        Service storage service = services[serviceId];
+        
+        if (!service.exists) revert ServiceDoesNotExist();
+        if (service.creator != msg.sender) revert NotServiceCreator();
+        
+        service.paused = true;
+        
+        emit ServicePaused(serviceId);
+    }
+    
+    /**
+     * @notice Unpause a service to allow new subscriptions
+     * @param serviceId The ID of the service to unpause
+     * @dev Only creator can unpause.
+     */
+    function unpauseService(uint256 serviceId) external {
+        Service storage service = services[serviceId];
+        
+        if (!service.exists) revert ServiceDoesNotExist();
+        if (service.creator != msg.sender) revert NotServiceCreator();
+        
+        service.paused = false;
+        
+        emit ServiceUnpaused(serviceId);
     }
 }

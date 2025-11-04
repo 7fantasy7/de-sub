@@ -17,6 +17,9 @@ contract MicroSubsTest is Test {
     event ServiceCreated(uint256 indexed serviceId, address indexed creator, uint256 pricePerMonth);
     event UserSubscribed(uint256 indexed serviceId, address indexed user, uint256 expiry);
     event EarningsWithdrawn(uint256 indexed serviceId, address indexed creator, uint256 amount);
+    event ServicePriceUpdated(uint256 indexed serviceId, uint256 oldPrice, uint256 newPrice);
+    event ServicePaused(uint256 indexed serviceId);
+    event ServiceUnpaused(uint256 indexed serviceId);
     
     function setUp() public {
         microSubs = new MicroSubs();
@@ -468,5 +471,300 @@ contract MicroSubsTest is Test {
             shouldBeSubscribed, 
             "Subscription status should match expected"
         );
+    }
+    
+    /*//////////////////////////////////////////////////////////////
+                    PRICE UPDATE TESTS
+    //////////////////////////////////////////////////////////////*/
+    
+    function testUpdateServicePrice() public {
+        // Create service
+        vm.prank(creator);
+        uint256 serviceId = microSubs.createService(SERVICE_PRICE);
+        
+        // Update price
+        uint256 newPrice = 0.2 ether;
+        
+        vm.startPrank(creator);
+        vm.expectEmit(true, false, false, true);
+        emit ServicePriceUpdated(serviceId, SERVICE_PRICE, newPrice);
+        
+        microSubs.updateServicePrice(serviceId, newPrice);
+        vm.stopPrank();
+        
+        // Verify price updated
+        (, uint256 price,) = microSubs.getServiceDetails(serviceId);
+        assertEq(price, newPrice, "Price should be updated");
+    }
+    
+    function testUpdateServicePriceRevertsOnNonCreator() public {
+        // Create service
+        vm.prank(creator);
+        uint256 serviceId = microSubs.createService(SERVICE_PRICE);
+        
+        // Try to update as non-creator
+        vm.prank(user1);
+        vm.expectRevert(MicroSubs.NotServiceCreator.selector);
+        microSubs.updateServicePrice(serviceId, 0.2 ether);
+    }
+    
+    function testUpdateServicePriceRevertsOnZeroPrice() public {
+        // Create service
+        vm.prank(creator);
+        uint256 serviceId = microSubs.createService(SERVICE_PRICE);
+        
+        // Try to update to zero
+        vm.prank(creator);
+        vm.expectRevert(MicroSubs.InvalidPrice.selector);
+        microSubs.updateServicePrice(serviceId, 0);
+    }
+    
+    function testUpdateServicePriceRevertsOnNonExistentService() public {
+        vm.prank(creator);
+        vm.expectRevert(MicroSubs.ServiceDoesNotExist.selector);
+        microSubs.updateServicePrice(999, 0.2 ether);
+    }
+    
+    function testPriceUpdateDoesNotAffectExistingSubscriptions() public {
+        // Create service
+        vm.prank(creator);
+        uint256 serviceId = microSubs.createService(SERVICE_PRICE);
+        
+        // User subscribes at old price
+        vm.prank(user1);
+        microSubs.subscribe{value: SERVICE_PRICE}(serviceId);
+        
+        // Creator updates price
+        uint256 newPrice = 0.2 ether;
+        vm.prank(creator);
+        microSubs.updateServicePrice(serviceId, newPrice);
+        
+        // User1's subscription should still be valid
+        assertTrue(microSubs.isSubscribed(user1, serviceId), "Existing subscription should remain valid");
+        
+        // New subscribers must pay new price
+        vm.prank(user2);
+        vm.expectRevert(MicroSubs.IncorrectPaymentAmount.selector);
+        microSubs.subscribe{value: SERVICE_PRICE}(serviceId); // Old price should fail
+        
+        // Subscribe with new price
+        vm.prank(user2);
+        microSubs.subscribe{value: newPrice}(serviceId);
+        assertTrue(microSubs.isSubscribed(user2, serviceId), "New subscription should work with new price");
+    }
+    
+    /*//////////////////////////////////////////////////////////////
+                    PAUSE/UNPAUSE TESTS
+    //////////////////////////////////////////////////////////////*/
+    
+    function testPauseService() public {
+        // Create service
+        vm.prank(creator);
+        uint256 serviceId = microSubs.createService(SERVICE_PRICE);
+        
+        // Pause service
+        vm.startPrank(creator);
+        vm.expectEmit(true, false, false, false);
+        emit ServicePaused(serviceId);
+        
+        microSubs.pauseService(serviceId);
+        vm.stopPrank();
+        
+        // Verify paused
+        (,, bool exists, bool paused,) = microSubs.getServiceInfo(serviceId);
+        assertTrue(exists, "Service should exist");
+        assertTrue(paused, "Service should be paused");
+    }
+    
+    function testUnpauseService() public {
+        // Create and pause service
+        vm.startPrank(creator);
+        uint256 serviceId = microSubs.createService(SERVICE_PRICE);
+        microSubs.pauseService(serviceId);
+        vm.stopPrank();
+        
+        // Unpause service
+        vm.startPrank(creator);
+        vm.expectEmit(true, false, false, false);
+        emit ServiceUnpaused(serviceId);
+        
+        microSubs.unpauseService(serviceId);
+        vm.stopPrank();
+        
+        // Verify unpaused
+        (,, bool exists, bool paused,) = microSubs.getServiceInfo(serviceId);
+        assertTrue(exists, "Service should exist");
+        assertFalse(paused, "Service should not be paused");
+    }
+    
+    function testSubscribeRevertsWhenPaused() public {
+        // Create service
+        vm.prank(creator);
+        uint256 serviceId = microSubs.createService(SERVICE_PRICE);
+        
+        // Pause service
+        vm.prank(creator);
+        microSubs.pauseService(serviceId);
+        
+        // Try to subscribe
+        vm.prank(user1);
+        vm.expectRevert(MicroSubs.ServicePaused.selector);
+        microSubs.subscribe{value: SERVICE_PRICE}(serviceId);
+    }
+    
+    function testExistingSubscriptionsValidAfterPause() public {
+        // Create service
+        vm.prank(creator);
+        uint256 serviceId = microSubs.createService(SERVICE_PRICE);
+        
+        // User subscribes
+        vm.prank(user1);
+        microSubs.subscribe{value: SERVICE_PRICE}(serviceId);
+        
+        // Pause service
+        vm.prank(creator);
+        microSubs.pauseService(serviceId);
+        
+        // Existing subscription should still be valid
+        assertTrue(microSubs.isSubscribed(user1, serviceId), "Existing subscription should remain valid");
+    }
+    
+    function testCanSubscribeAfterUnpause() public {
+        // Create and pause service
+        vm.startPrank(creator);
+        uint256 serviceId = microSubs.createService(SERVICE_PRICE);
+        microSubs.pauseService(serviceId);
+        vm.stopPrank();
+        
+        // Unpause
+        vm.prank(creator);
+        microSubs.unpauseService(serviceId);
+        
+        // Should be able to subscribe
+        vm.prank(user1);
+        microSubs.subscribe{value: SERVICE_PRICE}(serviceId);
+        
+        assertTrue(microSubs.isSubscribed(user1, serviceId), "Should be able to subscribe after unpause");
+    }
+    
+    function testPauseRevertsOnNonCreator() public {
+        // Create service
+        vm.prank(creator);
+        uint256 serviceId = microSubs.createService(SERVICE_PRICE);
+        
+        // Try to pause as non-creator
+        vm.prank(user1);
+        vm.expectRevert(MicroSubs.NotServiceCreator.selector);
+        microSubs.pauseService(serviceId);
+    }
+    
+    function testUnpauseRevertsOnNonCreator() public {
+        // Create and pause service
+        vm.startPrank(creator);
+        uint256 serviceId = microSubs.createService(SERVICE_PRICE);
+        microSubs.pauseService(serviceId);
+        vm.stopPrank();
+        
+        // Try to unpause as non-creator
+        vm.prank(user1);
+        vm.expectRevert(MicroSubs.NotServiceCreator.selector);
+        microSubs.unpauseService(serviceId);
+    }
+    
+    /*//////////////////////////////////////////////////////////////
+                    SUBSCRIBER COUNT TESTS
+    //////////////////////////////////////////////////////////////*/
+    
+    function testSubscriberCountIncreases() public {
+        // Create service
+        vm.prank(creator);
+        uint256 serviceId = microSubs.createService(SERVICE_PRICE);
+        
+        // Check initial count
+        (,,,, uint256 count) = microSubs.getServiceInfo(serviceId);
+        assertEq(count, 0, "Initial subscriber count should be 0");
+        
+        // User1 subscribes
+        vm.prank(user1);
+        microSubs.subscribe{value: SERVICE_PRICE}(serviceId);
+        
+        (,,,, count) = microSubs.getServiceInfo(serviceId);
+        assertEq(count, 1, "Subscriber count should be 1");
+        
+        // User2 subscribes
+        vm.prank(user2);
+        microSubs.subscribe{value: SERVICE_PRICE}(serviceId);
+        
+        (,,,, count) = microSubs.getServiceInfo(serviceId);
+        assertEq(count, 2, "Subscriber count should be 2");
+    }
+    
+    function testSubscriberCountDoesNotIncreaseOnRenewal() public {
+        // Create service
+        vm.prank(creator);
+        uint256 serviceId = microSubs.createService(SERVICE_PRICE);
+        
+        // User subscribes
+        vm.prank(user1);
+        microSubs.subscribe{value: SERVICE_PRICE}(serviceId);
+        
+        (,,,, uint256 count) = microSubs.getServiceInfo(serviceId);
+        assertEq(count, 1, "Subscriber count should be 1");
+        
+        // User renews (still active)
+        vm.warp(block.timestamp + 15 days);
+        vm.prank(user1);
+        microSubs.subscribe{value: SERVICE_PRICE}(serviceId);
+        
+        (,,,, count) = microSubs.getServiceInfo(serviceId);
+        assertEq(count, 1, "Subscriber count should still be 1 on renewal");
+    }
+    
+    function testSubscriberCountIncreasesAfterExpiry() public {
+        // Create service
+        vm.prank(creator);
+        uint256 serviceId = microSubs.createService(SERVICE_PRICE);
+        
+        // User subscribes
+        vm.prank(user1);
+        microSubs.subscribe{value: SERVICE_PRICE}(serviceId);
+        
+        (,,,, uint256 count) = microSubs.getServiceInfo(serviceId);
+        assertEq(count, 1, "Subscriber count should be 1");
+        
+        // Wait for expiry
+        vm.warp(block.timestamp + 31 days);
+        
+        // User re-subscribes after expiry
+        vm.prank(user1);
+        microSubs.subscribe{value: SERVICE_PRICE}(serviceId);
+        
+        (,,,, count) = microSubs.getServiceInfo(serviceId);
+        assertEq(count, 2, "Subscriber count should increase after expiry and re-subscribe");
+    }
+    
+    /*//////////////////////////////////////////////////////////////
+                    GET SERVICE INFO TESTS
+    //////////////////////////////////////////////////////////////*/
+    
+    function testGetServiceInfo() public {
+        // Create service
+        vm.prank(creator);
+        uint256 serviceId = microSubs.createService(SERVICE_PRICE);
+        
+        // Get service info
+        (
+            address serviceCreator,
+            uint256 price,
+            bool exists,
+            bool paused,
+            uint256 subscriberCount
+        ) = microSubs.getServiceInfo(serviceId);
+        
+        assertEq(serviceCreator, creator, "Creator should match");
+        assertEq(price, SERVICE_PRICE, "Price should match");
+        assertTrue(exists, "Service should exist");
+        assertFalse(paused, "Service should not be paused initially");
+        assertEq(subscriberCount, 0, "Initial subscriber count should be 0");
     }
 }

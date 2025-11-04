@@ -250,11 +250,28 @@ These features add complexity. MicroSubs is intentionally minimal to:
 - **MicroSubs:** Automated expiration, on-chain verification
 - **Manual:** Requires off-chain tracking, trust
 
+## Architecture Overview
+
+### Data Flow
+```
+Creator → createService() → Service stored on-chain
+User → subscribe() → Payment sent + Expiry set
+Anyone → isSubscribed() → Check if active
+Creator → withdrawEarnings() → Receive payments
+Creator → updateServicePrice() → Update pricing (v1.1.0)
+Creator → pauseService() → Pause new subs (v1.1.0)
+```
+
+### State Management
+- **Services:** `serviceId → Service` (creator, price, exists, paused, subscriberCount)
+- **Subscriptions:** `serviceId → user → Subscription` (expiry timestamp)
+- **Earnings:** `serviceId → amount` (accumulated payments)
+
 ## Future Considerations
 
 ### Potential Upgrades (V2)
 1. **Variable Duration:** Allow 1, 3, 6, 12 month subscriptions
-2. **Pause/Resume:** Service creators can pause new subscriptions
+2. **Service Metadata:** IPFS integration for descriptions
 3. **Service Categories:** Tag services for discovery
 4. **Bulk Subscribe:** Subscribe to multiple services at once
 5. **Subscription Transfer:** Transfer subscription to another address

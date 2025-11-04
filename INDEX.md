@@ -5,9 +5,9 @@ Complete navigation guide for all project documentation.
 ## 🚀 Quick Start
 
 **New to the project?** Start here:
-1. [README.md](README.md) - Project overview and main documentation
+1. [README.md](README.md) - Project overview, features & version history
 2. [QUICKSTART.md](QUICKSTART.md) - Get running in 5 minutes
-3. [PROJECT_SUMMARY.md](PROJECT_SUMMARY.md) - High-level project summary
+3. [DESIGN.md](DESIGN.md) - Architecture & design decisions
 
 ## 📚 Documentation Structure
 
@@ -34,16 +34,6 @@ Complete navigation guide for all project documentation.
 - Common commands cheat sheet
 - Troubleshooting
 
-#### [PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)
-**High-level overview**
-- Project goals and features
-- File structure
-- Architecture highlights
-- Testing coverage
-- Design rationale
-- Use cases
-- Future enhancements
-
 ### Technical Documentation
 
 #### [DESIGN.md](DESIGN.md)
@@ -51,23 +41,12 @@ Complete navigation guide for all project documentation.
 - Design philosophy
 - Technical decisions explained
 - Why certain choices were made
-- Architecture patterns
+- Architecture overview & data flow
 - Scalability considerations
 - Testing strategy
 - Security analysis
 - Comparison with alternatives
-
-#### [ARCHITECTURE.md](ARCHITECTURE.md)
-**Visual architecture guide**
-- System overview diagrams
-- Data flow diagrams
-- State machine diagrams
-- Storage layout
-- Interaction patterns
-- Access control matrix
-- Event flow
-- Gas cost breakdown
-- Integration architecture
+- Future enhancements
 
 #### [TESTING_GUIDE.md](TESTING_GUIDE.md)
 **Complete testing guide**
@@ -167,11 +146,10 @@ Complete navigation guide for all project documentation.
 ### For Developers
 
 **Path 1: Understanding the Code**
-1. [README.md](README.md) - Overview
-2. [DESIGN.md](DESIGN.md) - Design decisions
+1. [README.md](README.md) - Overview & features
+2. [DESIGN.md](DESIGN.md) - Design decisions & architecture
 3. [src/MicroSubs.sol](src/MicroSubs.sol) - Implementation
 4. [test/MicroSubs.t.sol](test/MicroSubs.t.sol) - Test examples
-5. [ARCHITECTURE.md](ARCHITECTURE.md) - Visual diagrams
 
 **Path 2: Building & Testing**
 1. [QUICKSTART.md](QUICKSTART.md) - Setup
@@ -185,24 +163,14 @@ Complete navigation guide for all project documentation.
 1. [README.md](README.md) - Contract interface
 2. [FRONTEND_INTEGRATION.md](FRONTEND_INTEGRATION.md) - Integration guide
 3. [QUICKSTART.md](QUICKSTART.md) - Local testing
-4. [ARCHITECTURE.md](ARCHITECTURE.md) - Event flow
 
 ### For Auditors
 
 **Path: Security Review**
 1. [README.md](README.md) - Overview
-2. [DESIGN.md](DESIGN.md) - Design rationale
+2. [DESIGN.md](DESIGN.md) - Design & architecture
 3. [src/MicroSubs.sol](src/MicroSubs.sol) - Code review
 4. [test/MicroSubs.t.sol](test/MicroSubs.t.sol) - Test coverage
-5. [ARCHITECTURE.md](ARCHITECTURE.md) - Security boundaries
-
-### For Project Managers
-
-**Path: Project Overview**
-1. [PROJECT_SUMMARY.md](PROJECT_SUMMARY.md) - Summary
-2. [README.md](README.md) - Features
-3. [DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md) - Launch plan
-4. [DESIGN.md](DESIGN.md) - Future enhancements
 
 ## 🎯 Quick Reference
 
@@ -213,10 +181,9 @@ Complete navigation guide for all project documentation.
 | Install and setup | [QUICKSTART.md](QUICKSTART.md) |
 | Run tests | [TESTING_GUIDE.md](TESTING_GUIDE.md) |
 | Deploy locally | [QUICKSTART.md](QUICKSTART.md#local-development) |
-| Deploy to testnet | [DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md#testnet-deployment) |
+| Deploy to testnet | [DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md) |
 | Build frontend | [FRONTEND_INTEGRATION.md](FRONTEND_INTEGRATION.md) |
 | Understand design | [DESIGN.md](DESIGN.md) |
-| View diagrams | [ARCHITECTURE.md](ARCHITECTURE.md) |
 | Check security | [README.md](README.md#security-considerations) |
 
 ### Key Concepts
@@ -224,7 +191,7 @@ Complete navigation guide for all project documentation.
 | Concept | Where to Learn |
 |---------|----------------|
 | Service creation | [README.md](README.md#core-functions) |
-| Subscriptions | [ARCHITECTURE.md](ARCHITECTURE.md#subscription-state-machine) |
+| Subscriptions | [DESIGN.md](DESIGN.md#architecture-overview) |
 | Time-based expiration | [DESIGN.md](DESIGN.md#why-30-days-instead-of-blocks) |
 | Earnings withdrawal | [src/MicroSubs.sol](src/MicroSubs.sol) |
 | Gas optimization | [DESIGN.md](DESIGN.md#gas-efficiency) |
